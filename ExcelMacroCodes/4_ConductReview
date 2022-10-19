@@ -1,0 +1,136 @@
+Public Sub ConductReview()
+    
+    '==========================================================================================
+    'Description
+    '==========================================================================================
+    '- this macro conduct HCR
+    '- this macro compares recommendation with observation then mark them a 'Compliant', 'Non-Compliant', 'check?????'
+    
+    '==========================================================================================
+    'Configuration
+    '==========================================================================================
+    '-
+    
+    '==========================================================================================
+    'Code
+    '==========================================================================================
+    'declaring mainWBk
+    Dim mainWBk As Workbook
+    'set the workbook with the code as the book we will be working on
+    Set mainWBk = ThisWorkbook
+    mainWBk.Sheets("2").Activate
+    
+    a1 = mainWBk.Sheets("2").Index
+    'store everything from sheet '1' and '2' into array
+    arr1 = ThisWorkbook.Worksheets("1").Range("A1").CurrentRegion
+    Set r1 = Range("A:ABC").Find(What:=mainWBk.Sheets(a1 + 1).Name, After:=ActiveCell, LookIn:= _
+            xlValues, LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:= _
+            xlNext, MatchCase:=False, SearchFormat:=False)
+    a2 = r1.Column
+    
+    'prevent screen from flickering
+    Application.ScreenUpdating = False
+    
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Main segment
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'loop rows of array
+    For i = 2 To UBound(arr1, 1)
+        'loop imported GPRs
+        For j = a1 + 1 To mainWBk.Sheets.Count
+            'counter
+            c1 = 0
+                
+            'loop recommendation columns
+            For k = 2 To a2 - 1
+                Set r1 = Range("A:ABC").Find(What:=mainWBk.Sheets(j).Name, After:=ActiveCell, LookIn:= _
+                        xlValues, LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:= _
+                        xlNext, MatchCase:=False, SearchFormat:=False)
+                'https://www.wallstreetmojo.com/rows-function-in-excel/
+                If Cells(i, k) = Cells(i, r1.Column + 1) Then
+                    'if empty is compliant, it would have been in the first column as it makes more sense
+                    If k <> 2 And Cells(i, r1.Column + 1) = "" Then
+                    Else
+                        c1 = c1 + 1
+                    End If
+                End If
+            Next k
+            
+            If c1 > 0 Then
+                Cells(i, r1.Column) = "Compliant"
+            Else
+                If Cells(i, r1.Column + 1) = "Data not found." Then
+                    Cells(i, r1.Column) = "Pending Artefacts"
+                Else
+                    Cells(i, r1.Column) = "Non-Compliant"
+                End If
+            End If
+        Next j
+    Next i
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Main segment
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'clean and format imported GPRs
+    cleanSheetFunc = CleanSheet()
+    
+    'prevent screen from flickering
+    Application.ScreenUpdating = True
+    
+    'save workbook
+    ActiveWorkbook.Save
+    
+End Sub
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function CleanSheet() As Variant
+    
+    'format data
+    Cells.Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 11
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+        .Bold = False
+        .Underline = xlUnderlineStyleNone
+    End With
+    With Selection
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlTop
+        .WrapText = True
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    With Selection.Interior
+        .Pattern = xlNone
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+    'set column width
+    Selection.ColumnWidth = 20
+    'column and row autofit
+    'Cells.EntireColumn.AutoFit
+    Cells.EntireRow.AutoFit
+    Range("A1").Select
+End Function
+
+
