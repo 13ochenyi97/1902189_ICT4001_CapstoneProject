@@ -1,0 +1,140 @@
+Public Sub PrepareReviewSheet()
+    
+    '==========================================================================================
+    'Description
+    '==========================================================================================
+    '- this macro stores data from sheet '1' into array
+    '- then paste 'finding name' and 'recommendation' into sheet '2'
+    '- then get all imported GPRs and paste GPRs' names into sheet '2'
+    '- note:
+    
+    '==========================================================================================
+    'Configuration
+    '==========================================================================================
+    'This indicates the number of columns you wants to copy from '1' to '2', starting from column 1
+    colFrom1 = 3
+    
+    '==========================================================================================
+    'Code
+    '==========================================================================================
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Store '1' into array and paste 'finding name' and 'recommendation' columns into '2'
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'prevent screen from flickering
+    Application.ScreenUpdating = False
+    
+    'store everything from sheet '1' into array
+    arr1 = ThisWorkbook.Worksheets("1").Range("A1").CurrentRegion
+    
+    'counter
+    c1 = 0
+    
+    'check if sheet '2' exists
+    For i = 1 To ThisWorkbook.Sheets.Count
+        If ThisWorkbook.Sheets(i).Name = "2" Then c1 = c1 + 1
+    Next i
+    
+    'https://www.youtube.com/watch?v=hFedopMnJ9A
+    'if sheet '2' exists just paste 'finding name' and 'recommendation'
+    'else create new sheet named '2' then paste 'finding name' and 'recommendation'
+    If c1 > 0 Then
+        Worksheets("2").Range("A1").Resize(UBound(arr1, 1), colFrom1).Value = arr1
+    Else
+        Sheets.Add(After:=Sheets("1")).Name = "2"
+        Worksheets("2").Range("A1").Resize(UBound(arr1, 1), colFrom1).Value = arr1
+    End If
+        
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Get all imported GPRs' names and paste into '2'
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    listImGPRsFunc = ListImGPRs(colFrom1)
+    
+    'clean and format imported GPRs
+    cleanSheetFunc = CleanSheet()
+    
+    'prevent screen from flickering
+    Application.ScreenUpdating = True
+    
+    'save workbook
+    ActiveWorkbook.Save
+    
+End Sub
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function ListImGPRs(colFrom1) As Variant
+    'https://www.automateexcel.com/vba/list-all-sheets-in-workbook/
+    'https://excel-macro.tutorialhorizon.com/vba-excel-get-the-names-of-all-worksheets-in-a-excel-workbook/
+    Dim mainWBk As Workbook
+    Set mainWBk = ThisWorkbook
+    
+    'paste asset names from column colFrom1 + 1 onwards
+    y = colFrom1 + 1
+
+    'get sheet index of sheet '2' as sheets after '2' are the imported GPRs
+    a1 = mainWBk.Sheets("2").Index
+
+    For i = a1 + 1 To mainWBk.Sheets.Count
+        Cells(1, y) = mainWBk.Sheets(i).Name
+        'i cant make them merge
+        'Range(Cells(1, y), Cells(1, y + 1)).Merge
+        Cells(1, y + 1) = "<-- Observation"
+        'y = y + 1
+        y = y + 2
+    Next i
+End Function
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function CleanSheet() As Variant
+    'format data
+    Cells.Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 11
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+        .Bold = False
+        .Underline = xlUnderlineStyleNone
+    End With
+    With Selection
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlTop
+        .WrapText = True
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    With Selection.Interior
+        .Pattern = xlNone
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+    'set column width
+    Selection.ColumnWidth = 20
+    'column and row autofit
+    'Cells.EntireColumn.AutoFit
+    Cells.EntireRow.AutoFit
+    Range("A1").Select
+End Function
+
+
+
+
