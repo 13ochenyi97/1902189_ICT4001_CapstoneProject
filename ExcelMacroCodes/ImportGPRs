@@ -1,0 +1,140 @@
+Public Sub ImportGPRs()
+    
+    '==========================================================================================
+    'Description
+    '==========================================================================================
+    '- this macro inserts all GPResults into Excel
+    '- note:
+    '   > edit 'removeBack' and 'removeFront' to remove characters from the back and front respectively
+    '   > characters to remove from the back is based on string
+    '   > characters to remove from the front is based on length
+    '   > example for 'removeBack'
+    '       lets say the file name is 5432qwer.html and you want to remove ".html"
+    '       you can update removeBack = ".html"
+    '       expected output -> 5432qwer
+    '   > example for 'removeFront'
+    '       lets say the file name is 5432qwer.html and you want to remove "5432"
+    '       you can update removeFront = 4
+    '       expected output -> qwer.html
+    'IMPORTANT: SEEMS LIKE IMPORTING GPRs WILL CRASH IF THERE ARE TOO MANY FILES (it happened once only)
+    
+    '==========================================================================================
+    'Configuration
+    '==========================================================================================
+    'characters to remove from the back (based on string)
+    'remove characters from .html on
+    'removeBack = ".html"
+    'remove characters from -GPO on
+    removeBack = ".html"
+    'characters to remove from the front (based on length)
+    'remove first 3 characters from the front
+    'removeFront = 3
+    'remove no character from the front
+    removeFront = 0
+
+    '==========================================================================================
+    'Code
+    '==========================================================================================
+    'declaring dotHtml
+    Dim dotHtml As Workbook
+    'array to store selected files, variant means can be anything like integer string array etc
+    Dim getGPRsFunc() As Variant
+
+    'prevent screen from flickering
+    Application.ScreenUpdating = False
+    
+    'prompt user to select file(s) to be opened
+    getGPRsFunc = GetGPRs()
+    
+    For i = 1 To Application.CountA(getGPRsFunc)
+        'open selected file in a separate excel
+        Set dotHtml = Workbooks.Open(getGPRsFunc(i))
+        'equivalent to ctrl aa and copy data from newly opened file
+        dotHtml.Sheets(1).Cells.Copy
+        'select excel workbook that has the code 'https://www.automateexcel.com/vba/workbook-object/
+        ThisWorkbook.Activate
+        'add new sheet to end of workbook
+        Sheets.Add After:=Sheets(Sheets.Count)
+        'paste in new sheet
+        ActiveSheet.Paste
+        
+        'clean and format imported GPRs
+        cleanSheetFunc = CleanSheet()
+        
+        'rename sheet, cannot more the 31 characters so need remove some characters, im removing '.html'
+        'https://docs.microsoft.com/en-us/office/vba/language/reference/user-interface-help/left-function
+        'https://docs.microsoft.com/en-us/office/vba/Language/Reference/User-Interface-Help/instr-function
+        'InStr([start from first char], [string im searching through], [what im looking for]) - 1
+        dotHtmlName = Left(dotHtml.Name, InStr(1, dotHtml.Name, removeBack) - 1)
+        dotHtmlName = Right(dotHtmlName, Len(dotHtmlName) - removeFront)
+        ActiveSheet.Name = dotHtmlName
+        'just to unselect everything
+        Range("A1").Select
+        'clear clipboard to close clear clipboard prompt
+        Application.CutCopyMode = False
+        'close opened file
+        dotHtml.Close
+    Next i
+    
+    'prevent screen from flickering
+    Application.ScreenUpdating = True
+    
+    'save workbook
+    ActiveWorkbook.Save
+    
+End Sub
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function GetGPRs() As Variant
+    'window pop up for file selection
+    GetGPRs = Application.GetOpenFilename(Title:="Select GPResult(s) to Import", MultiSelect:=True)
+End Function
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function CleanSheet() As Variant
+    'delete all rows above "group policy results"
+    Range("A1").Select
+    Cells.Find(What:="group policy results", After:=ActiveCell, LookIn:=xlFormulas2, _
+        LookAt:=xlPart, SearchOrder:=xlByRows, SearchDirection:=xlNext, _
+        MatchCase:=False, SearchFormat:=False).Activate
+    myRow = ActiveCell.Row - 1
+    If myRow > 1 Then Rows("1:" & myRow).Select
+    Selection.Delete Shift:=xlUp
+    
+    'delete columns that are not needed
+    Columns("D:AA").EntireColumn.Delete
+    
+    'format data
+    Cells.Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 11
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+        .Bold = False
+        .Underline = xlUnderlineStyleNone
+    End With
+    With Selection.Interior
+        .Pattern = xlNone
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+End Function
+
+
