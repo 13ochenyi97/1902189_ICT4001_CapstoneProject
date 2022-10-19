@@ -1,0 +1,195 @@
+Public Sub ExtractFindings()
+    
+    '==========================================================================================
+    'Description
+    '==========================================================================================
+    '- this macro conduct HCR
+    '- this macro stores data from sheet '1' into array
+    '- then loop through all columns in each row
+    '- note:
+    '   > ensure that the keyword in '1' is exact as those in the GPRs since the find function is searching for exact value
+    '   > if missing anything character/symbol, it will be identified as no value found
+    
+    '==========================================================================================
+    'Configuration
+    '==========================================================================================
+    'keyword column starts from column 4 in '1'
+    keywordCol = 4
+
+    '==========================================================================================
+    'Code
+    '==========================================================================================
+    'declaring mainWBk
+    Dim mainWBk As Workbook
+    'set the workbook with the code as the book we will be working on
+    Set mainWBk = ThisWorkbook
+    'store everything from sheet '1' and '2' into array
+    arr1 = ThisWorkbook.Worksheets("1").Range("A1").CurrentRegion
+    'arr2 = ThisWorkbook.Worksheets("2").Range("A1").CurrentRegion
+    'arraylist to store findings
+    Set arrList = CreateObject("System.Collections.ArrayList")
+    ' get sheet number of '2'
+    a1 = mainWBk.Sheets("2").Index
+
+    'prevent screen from flickering
+    Application.ScreenUpdating = False
+    
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Main segment
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'loop rows of array
+    For i = 2 To UBound(arr1, 1)
+        'loop imported GPRs
+        For j = a1 + 1 To mainWBk.Sheets.Count
+            'clear a2 for the next search
+            a2 = ""
+            'clear arrList for the next search
+            arrList.Clear
+ 
+            mainWBk.Sheets(j).Activate
+            'here so that when looping column, it wont start with 'A1' again
+            Range("A1").Select
+            
+            'count to end loop if 1--1 and 1--2 have no match
+            c = 0
+            
+            'loop columns of array
+            For k = keywordCol To UBound(arr1, 2)
+                'current keyword to be searched
+                a3 = arr1(i, k)
+
+                'if column in '1' is ""/Remarks, skip column
+                If a3 <> "" And arr1(1, k) <> "Remarks" And c < 2 Then
+                    'https://docs.microsoft.com/en-us/office/vba/api/excel.xllookat
+                    Set r = Range("A:Z").Find(What:=a3, After:=ActiveCell, LookIn:= _
+                    xlValues, LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:= _
+                    xlNext, MatchCase:=False, SearchFormat:=False)
+    
+                    If Not r Is Nothing Then
+                        r.Select
+                        'https://www.tachytelic.net/2019/09/vba-add-item-array/
+                        'https://stackoverflow.com/questions/44479125/arraylist-remove-duplicates-make-unique
+                        'if loop so won't add empty value into arraylist as it will insert unnecessary line break after that
+                        If r.Offset(0, 1) <> "" Then arrList.Add r.Offset(0, 1).Value
+                        'since 'allow telemetry' 2nd value can't be searched using keywords, i will extract it manually using this if loop
+                        If r.Offset(0, 0) = "Allow Telemetry" Then arrList.Add r.Offset(1, 1).Value
+                        If arrList.contains("Data not found.") = True Then arrList.Remove "Data not found."
+                    Else
+                        'https://social.msdn.microsoft.com/Forums/en-US/7ebb5453-3c1e-4542-addf-e2454e6a10de/check-if-arraylist-is-empty?forum=aspgettingstarted
+                        If arrList.Count = 0 Then arrList.Add "Data not found."
+                        'so that if 1--1 and 1--2 keywords have no search results, skip subsequent columns
+                        If arr1(i, k + 1) = "" Then
+                            c = c + 2
+                        Else
+                            c = c + 1
+                        End If
+                    End If
+                End If
+            Next k
+            
+            For m = 0 To arrList.Count - 1
+                'if loop so won't have leading line break
+                If m = 0 Then
+                    a2 = arrList(m)
+                ElseIf m > 0 Then
+                    a2 = a2 & vbCrLf & arrList(m)
+                End If
+            Next m
+            
+            '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            'Dynamically pasting findings
+            '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            'paste into review sheet
+            mainWBk.Sheets("2").Activate
+            'Dim r1, r2 As Range
+            'Dim rowRow, colCol As Integer
+            'get current finding name
+            a4 = arr1(i, 1)
+            'get name of the device being reviewed
+            a5 = mainWBk.Sheets(j).Name
+            'find sheet for finding name
+            Set r1 = Range("A:ABC").Find(What:=a4, After:=ActiveCell, LookIn:= _
+                    xlValues, LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:= _
+                    xlNext, MatchCase:=False, SearchFormat:=False)
+            'find sheet for device name
+            Set r2 = Range("A:ABC").Find(What:=a5, After:=ActiveCell, LookIn:= _
+                    xlValues, LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:= _
+                    xlNext, MatchCase:=False, SearchFormat:=False)
+            'get row of finding name
+            rowRow = r1.Row
+            'get column of device name
+            colCol = r2.Column
+            'store value into row and column retrieved
+            Cells(rowRow, colCol + 1).Value = a2
+            'Cells(i, j - 1).Value = a2
+        Next j
+    Next i
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'Main segment
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    'clean and format imported GPRs
+    cleanSheetFunc = CleanSheet()
+    
+    'prevent screen from flickering
+    Application.ScreenUpdating = True
+    
+    'save workbook
+    ActiveWorkbook.Save
+    
+End Sub
+'==========================================================================================
+'Function
+'==========================================================================================
+Public Function CleanSheet() As Variant
+    
+    'format data
+    Cells.Select
+    With Selection.Font
+        .Name = "Calibri"
+        .Size = 11
+        .Strikethrough = False
+        .Superscript = False
+        .Subscript = False
+        .OutlineFont = False
+        .Shadow = False
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+        .ThemeFont = xlThemeFontMinor
+        .Bold = False
+        .Underline = xlUnderlineStyleNone
+    End With
+    With Selection
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlTop
+        .WrapText = True
+        .Orientation = 0
+        .AddIndent = False
+        .IndentLevel = 0
+        .ShrinkToFit = False
+        .ReadingOrder = xlContext
+        .MergeCells = False
+    End With
+    With Selection.Interior
+        .Pattern = xlNone
+        .TintAndShade = 0
+        .PatternTintAndShade = 0
+    End With
+    Selection.Borders(xlDiagonalDown).LineStyle = xlNone
+    Selection.Borders(xlDiagonalUp).LineStyle = xlNone
+    Selection.Borders(xlEdgeLeft).LineStyle = xlNone
+    Selection.Borders(xlEdgeTop).LineStyle = xlNone
+    Selection.Borders(xlEdgeBottom).LineStyle = xlNone
+    Selection.Borders(xlEdgeRight).LineStyle = xlNone
+    Selection.Borders(xlInsideVertical).LineStyle = xlNone
+    Selection.Borders(xlInsideHorizontal).LineStyle = xlNone
+    'set column width
+    Selection.ColumnWidth = 20
+    'column and row autofit
+    'Cells.EntireColumn.AutoFit
+    Cells.EntireRow.AutoFit
+    Range("A1").Select
+End Function
+
+
+
+
